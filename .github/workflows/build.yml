@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write      # build provenance attestations
+  attestations: write
 
 jobs:
   build:
@@ -27,14 +29,20 @@ jobs:
       - run: python nexus_dedupe.py --help
       - run: pip install pyinstaller==6.11.1
       - run: pyinstaller --onefile --windowed --name NexusModCleanup nexus_dedupe_gui.py
-      - name: Rename binary
+      - name: Rename binary and write checksum
         shell: bash
-        run: mv dist/NexusModCleanup* "dist/${{ matrix.asset }}"
+        run: |
+          mv dist/NexusModCleanup* "dist/${{ matrix.asset }}"
+          cd dist && sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
       - if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/${{ matrix.asset }}
+      - if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.asset }}
+          files: dist/${{ matrix.asset }}*

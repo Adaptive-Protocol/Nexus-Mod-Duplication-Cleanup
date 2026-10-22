@@ -34,20 +34,30 @@ new: Autoloot 5202 3.11.2 2026-10-17T10-20Z ozVyzbbhu.zip
 - Files belong to the same mod when the **mod ID** matches and the names match after ignoring case, punctuation and versions written into the name. `Hotscenes Add-on 5.23.7` and `Hotscenes Add-on` are one mod; `(FF) Christmas Moments` and `(MF) Christmas Moments` stay separate variants.
 - The newest **upload date** from the filename wins, not the file's modified date on disk, which changes when files are copied or restored. Version numbers break ties.
 - **Judgment calls** are mods whose file names carry different versions (e.g. `CET 1.35.0 - Patch 2.21` vs `CET 1.37.0 - Patch 2.31`), or whose upload order disagrees with their version numbers. These are always shown in the popup before anything is removed.
-- Files that don't follow a Nexus naming pattern (`MBSetup.exe`, `Autoloot.zip`, …) are never touched.
+- Files that don't follow a Nexus naming pattern (`setup.exe`, `Autoloot.zip`, …) are never touched.
 
 ## Command line
 
 `nexus_dedupe.py` is the same engine without the window:
 
 ```
-python nexus_dedupe.py --folder "F:\Games\Cyberpunk Mods"            # dry run, writes a log
+python nexus_dedupe.py --folder "path/to/mod downloads"               # dry run, writes a log
 python nexus_dedupe.py --folder ... --execute                         # move outdated files to _outdated_trash
 python nexus_dedupe.py --folder ... --execute --hard                  # delete permanently
 python nexus_dedupe.py --folder ... --keep 2                          # keep a rollback copy of each mod
 ```
 
 With `--execute`, it asks about each judgment call and then confirms once before acting. `--yes` skips all prompts and collapses everything.
+
+## Verifying downloads
+
+Every release binary is built by GitHub Actions straight from this repository, with a `.sha256` checksum and a signed build-provenance attestation alongside it:
+
+```
+sha256sum -c NexusModCleanup-linux.sha256                       # Linux
+Get-FileHash NexusModCleanup-windows.exe                        # Windows PowerShell; compare with the .sha256 file
+gh attestation verify NexusModCleanup-windows.exe -R Adaptive-Protocol/Nexus-Mod-Duplication-Cleanup
+```
 
 ## Building
 
