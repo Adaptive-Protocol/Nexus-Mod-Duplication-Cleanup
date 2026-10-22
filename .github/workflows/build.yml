@@ -8,6 +8,9 @@ on:
 
 permissions:
   contents: write
+  id-token: write      # build provenance attestations
+  attestations: write
+  actions: read        # lets SignPath fetch the unsigned artifact
 
 jobs:
   build:
@@ -16,25 +19,85 @@ jobs:
         include:
           - os: windows-latest
             asset: NexusModCleanup-windows.exe
+            exe: NexusModCleanup.exe
           - os: ubuntu-22.04
             asset: NexusModCleanup-linux
+            exe: NexusModCleanup
     runs-on: ${{ matrix.os }}
+    env:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}   # signing is skipped until this secret exists
+      SIGN: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python nexus_dedupe.py --help
-      - run: pip install pyinstaller==6.11.1
-      - run: pyinstaller --onefile --windowed --name NexusModCleanup nexus_dedupe_gui.py
-      - name: Rename binary
-        shell: bash
-        run: mv dist/NexusModCleanup* "dist/${{ matrix.asset }}"
-      - uses: actions/upload-artifact@v4
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tag must match the version in Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          [[ "$GITHUB_REF_NAME" == "v$v" ]] || { echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $v"; exit 1; }
+
+      - run: cargo test --release --locked
+      - run: cargo build --release --locked
+
+      - name: No networking libraries in the build
+        run: |
+          if cargo tree --locked -e normal --prefix none --format '{p}' | grep -E '^(reqwest|ureq|hyper|curl|isahc|attohttpc|surf|tungstenite|native-tls|rustls|openssl) '; then
+            echo "::error::a networking library is part of the build"; exit 1
+          fi
+      - name: No network DLLs imported
+        if: runner.os == 'Windows'
+        run: |
+          pip install pefile==2024.8.26
+          python - "target/release/${{ matrix.exe }}" <<'PY'
+          import pefile, sys
+          dlls = {e.dll.decode().lower() for e in pefile.PE(sys.argv[1]).DIRECTORY_ENTRY_IMPORT}
+          print("imports:", ", ".join(sorted(dlls)))
+          bad = dlls & {"ws2_32.dll", "wsock32.dll", "winhttp.dll", "wininet.dll", "urlmon.dll", "dnsapi.dll"}
+          sys.exit(f"network DLLs imported: {sorted(bad)}" if bad else 0)
+          PY
+      - name: Same decisions as the Python engine
+        if: runner.os == 'Linux'
+        run: tests/parity.sh
+
+      - run: mkdir dist && mv "target/release/${{ matrix.exe }}" "dist/${{ matrix.asset }}"
+      - name: Third-party license notices (fails on a license not listed in about.toml)
+        if: runner.os == 'Linux'
+        run: |
+          cargo install cargo-about@0.9.2 --locked --features cli
+          cargo about generate --locked about.hbs -o dist/THIRD-PARTY-NOTICES.txt
+      - id: unsigned
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
+
+      - if: env.SIGN == 'true' && env.SIGNPATH_API_TOKEN != ''
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'Nexus-Mod-Duplication-Cleanup' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: 3600   # time for the manual approval
+          output-artifact-directory: signed
+      - if: env.SIGN == 'true' && env.SIGNPATH_API_TOKEN != ''
+        run: mv "signed/${{ matrix.asset }}" "dist/${{ matrix.asset }}"
+
+      - if: startsWith(github.ref, 'refs/tags/')
+        run: cd dist && sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/${{ matrix.asset }}
       - if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.asset }}
+          files: dist/*

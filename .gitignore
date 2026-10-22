@@ -4,3 +4,4 @@ build/
 dist/
 *.spec
 dedupe_log_*.txt
+target/
