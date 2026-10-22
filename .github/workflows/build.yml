@@ -10,6 +10,7 @@ permissions:
   contents: write
   id-token: write      # build provenance attestations
   attestations: write
+  actions: read        # lets SignPath fetch the unsigned artifact
 
 jobs:
   build:
@@ -21,6 +22,12 @@ jobs:
           - os: ubuntu-22.04
             asset: NexusModCleanup-linux
     runs-on: ${{ matrix.os }}
+    env:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}   # signing is skipped until this secret exists
+      SIGN: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,16 +35,49 @@ jobs:
           python-version: "3.12"
       - run: python nexus_dedupe.py --help
       - run: pip install pyinstaller==6.11.1
-      - run: pyinstaller --onefile --windowed --name NexusModCleanup nexus_dedupe_gui.py
-      - name: Rename binary and write checksum
-        shell: bash
+
+      - name: Write Windows version info (product name + version, required for signing)
         run: |
-          mv dist/NexusModCleanup* "dist/${{ matrix.asset }}"
-          cd dist && sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
-      - uses: actions/upload-artifact@v4
+          v="${GITHUB_REF_NAME#v}"; [[ "$GITHUB_REF" == refs/tags/v* ]] || v=0.0.0
+          IFS=. read -r a b c _ <<< "$v.0.0"; t="(${a:-0}, ${b:-0}, ${c:-0}, 0)"
+          cat > version_info.txt <<EOF
+          VSVersionInfo(
+            ffi=FixedFileInfo(filevers=$t, prodvers=$t),
+            kids=[StringFileInfo([StringTable('040904B0', [
+              StringStruct('FileDescription', 'Nexus Mod Duplication Cleanup'),
+              StringStruct('FileVersion', '$v'),
+              StringStruct('OriginalFilename', 'NexusModCleanup.exe'),
+              StringStruct('ProductName', 'Nexus-Mod-Duplication-Cleanup'),
+              StringStruct('ProductVersion', '$v')])]),
+              VarFileInfo([VarStruct('Translation', [1033, 1200])])])
+          EOF
+
+      - run: >
+          pyinstaller --onefile --windowed --name NexusModCleanup
+          ${{ matrix.os == 'windows-latest' && '--version-file version_info.txt' || '' }}
+          nexus_dedupe_gui.py
+      - run: mv dist/NexusModCleanup* "dist/${{ matrix.asset }}"
+      - id: unsigned
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
+
+      - if: env.SIGN == 'true' && env.SIGNPATH_API_TOKEN != ''
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'Nexus-Mod-Duplication-Cleanup' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: 3600   # time for the manual approval
+          output-artifact-directory: signed
+      - if: env.SIGN == 'true' && env.SIGNPATH_API_TOKEN != ''
+        run: mv "signed/${{ matrix.asset }}" "dist/${{ matrix.asset }}"
+
+      - if: startsWith(github.ref, 'refs/tags/')
+        run: cd dist && sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
       - if: startsWith(github.ref, 'refs/tags/')
         uses: actions/attest-build-provenance@v2
         with:

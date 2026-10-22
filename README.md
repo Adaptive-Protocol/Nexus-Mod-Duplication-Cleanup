@@ -59,6 +59,17 @@ Get-FileHash NexusModCleanup-windows.exe                        # Windows PowerS
 gh attestation verify NexusModCleanup-windows.exe -R Adaptive-Protocol/Nexus-Mod-Duplication-Cleanup
 ```
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
+- Approvers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
+
+Only the Windows binary is signed. It is built by this repository's GitHub Actions workflow and each release is approved manually before signing.
+
+**Privacy policy:** This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
 ## Building
 
 Pushing a `v*` tag builds the Windows and Linux binaries with PyInstaller and attaches them to a GitHub release (see `.github/workflows/build.yml`). To build locally:
