@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+dedupe_log_*.txt
