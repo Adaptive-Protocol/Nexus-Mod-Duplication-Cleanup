@@ -1,6 +1,6 @@
 # Nexus-Mod-Duplication-Cleanup
 
-A lightweight app that finds outdated versions of mods in your Nexus Mods download folder and removes them, keeping only the newest file of each mod. Mods that need a judgment call, such as builds for different game patches, stay untouched until you say what to remove. Works on Windows and Linux.
+A small native app that finds outdated versions of mods in your Nexus Mods download folder and removes them, keeping only the newest file of each mod. Mods that need a judgment call, such as builds for different game patches, stay untouched until you say what to remove. Works on Windows and Linux.
 
 ## Download
 
@@ -9,13 +9,20 @@ Grab the latest build from the [Releases](../../releases) page:
 - **Windows:** `NexusModCleanup-windows.exe`
 - **Linux:** `NexusModCleanup-linux` (run `chmod +x NexusModCleanup-linux` once)
 
-Or run from source with Python 3.8+ (no extra packages): `python nexus_dedupe_gui.py`. On Linux you may need your distro's Tk package, e.g. `sudo apt install python3-tk`.
+Each is a single program with nothing to install and nothing unpacked to a temp folder. On Linux it needs a desktop session (X11 or Wayland) with OpenGL, which every mainstream desktop has.
+
+## What it does and doesn't do
+
+- It only looks at the folder you pick. It never touches game files or anything outside that folder.
+- Nothing changes until you press **Clean up** and confirm. Outdated files are moved to `_outdated_trash` unless you tick **Delete permanently**.
+- It never connects to the internet: no update checks, no telemetry, no links. Every build is checked for networking libraries, and the Windows build for networking DLL imports.
+- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder and keep count) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux.
 
 ## Using the app
 
-1. Pick your mod downloads folder (the default is the folder the app is in).
+1. Pick your mod downloads folder (the default is the folder the app is in, then the last folder you used).
 2. Press **Scan**. Nothing on disk changes. You get a report of what would be removed.
-3. If any mods need a judgment call, a popup lists them. Rows that stay selected are collapsed to the newest file. Deselect any mod whose older files you want to keep, for example to roll back after a game patch.
+3. If any mods need a judgment call, a popup lists them. Ticked mods are collapsed to the newest file. Untick any mod whose older files you want to keep, for example to roll back after a game patch.
 4. Press **Clean up**. By default outdated files go to an `_outdated_trash` subfolder, so you can check them before deleting that folder yourself. Tick **Delete permanently** to skip the trash.
 
 **Keep newest per mod** keeps more than one file per mod, e.g. `2` keeps the previous version of everything as a rollback copy.
@@ -38,7 +45,7 @@ new: Autoloot 5202 3.11.2 2026-10-17T10-20Z ozVyzbbhu.zip
 
 ## Command line
 
-`nexus_dedupe.py` is the same engine without the window:
+`nexus_dedupe.py` is the same engine without the window, for Python 3.8+ with no extra packages. The app is a line-for-line port of it, and every build checks that both make identical decisions:
 
 ```
 python nexus_dedupe.py --folder "path/to/mod downloads"               # dry run, writes a log
@@ -72,13 +79,18 @@ Only the Windows binary is signed. It is built by this repository's GitHub Actio
 
 ## Building
 
-Pushing a `v*` tag builds the Windows and Linux binaries with PyInstaller and attaches them to a GitHub release (see `.github/workflows/build.yml`). To build locally:
+The app is written in Rust with [egui](https://github.com/emilk/egui). With [Rust](https://rustup.rs) installed:
 
 ```
-pip install pyinstaller
-pyinstaller --onefile --windowed --name NexusModCleanup nexus_dedupe_gui.py
+cargo build --release          # binary in target/release/
+cargo test                     # engine tests
+tests/parity.sh                # compare decisions with nexus_dedupe.py (Linux/macOS)
 ```
 
-## License
+Pushing a `v*` tag that matches the version in `Cargo.toml` builds both binaries on GitHub Actions and attaches them to a GitHub release, together with checksums and `THIRD-PARTY-NOTICES.txt` (see `.github/workflows/build.yml`).
 
-MIT, see [LICENSE](LICENSE).
+## License and credits
+
+MIT, see [LICENSE](LICENSE). The app is built with [egui/eframe](https://github.com/emilk/egui), [rfd](https://github.com/PolyMeilex/rfd), [fancy-regex](https://github.com/fancy-regex/fancy-regex), [chrono](https://github.com/chronotope/chrono) and their dependencies, all under permissive licenses (MIT, Apache-2.0, BSD, Zlib and similar). Each release includes `THIRD-PARTY-NOTICES.txt` with their full license texts.
+
+The code was written by an AI assistant (Claude) at the maintainer's direction.

@@ -1,0 +1,11 @@
+Third-party software in Nexus Mod Duplication Cleanup
+======================================================
+
+The program is built from the libraries below. Each license text is followed by the libraries it covers.
+{{#each licenses}}
+
+--------------------------------------------------------------------------------
+{{name}} ({{id}}), used by: {{#each used_by}}{{crate.name}} {{crate.version}}{{#unless @last}}, {{/unless}}{{/each}}
+--------------------------------------------------------------------------------
+{{{text}}}
+{{/each}}

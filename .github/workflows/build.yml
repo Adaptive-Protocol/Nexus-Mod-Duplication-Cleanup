@@ -19,8 +19,10 @@ jobs:
         include:
           - os: windows-latest
             asset: NexusModCleanup-windows.exe
+            exe: NexusModCleanup.exe
           - os: ubuntu-22.04
             asset: NexusModCleanup-linux
+            exe: NexusModCleanup
     runs-on: ${{ matrix.os }}
     env:
       SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}   # signing is skipped until this secret exists
@@ -33,30 +35,43 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python nexus_dedupe.py --help
-      - run: pip install pyinstaller==6.11.1
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Write Windows version info (product name + version, required for signing)
+      - name: Tag must match the version in Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
-          v="${GITHUB_REF_NAME#v}"; [[ "$GITHUB_REF" == refs/tags/v* ]] || v=0.0.0
-          IFS=. read -r a b c _ <<< "$v.0.0"; t="(${a:-0}, ${b:-0}, ${c:-0}, 0)"
-          cat > version_info.txt <<EOF
-          VSVersionInfo(
-            ffi=FixedFileInfo(filevers=$t, prodvers=$t),
-            kids=[StringFileInfo([StringTable('040904B0', [
-              StringStruct('FileDescription', 'Nexus Mod Duplication Cleanup'),
-              StringStruct('FileVersion', '$v'),
-              StringStruct('OriginalFilename', 'NexusModCleanup.exe'),
-              StringStruct('ProductName', 'Nexus-Mod-Duplication-Cleanup'),
-              StringStruct('ProductVersion', '$v')])]),
-              VarFileInfo([VarStruct('Translation', [1033, 1200])])])
-          EOF
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          [[ "$GITHUB_REF_NAME" == "v$v" ]] || { echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $v"; exit 1; }
 
-      - run: >
-          pyinstaller --onefile --windowed --name NexusModCleanup
-          ${{ matrix.os == 'windows-latest' && '--version-file version_info.txt' || '' }}
-          nexus_dedupe_gui.py
-      - run: mv dist/NexusModCleanup* "dist/${{ matrix.asset }}"
+      - run: cargo test --release --locked
+      - run: cargo build --release --locked
+
+      - name: No networking libraries in the build
+        run: |
+          if cargo tree --locked -e normal --prefix none --format '{p}' | grep -E '^(reqwest|ureq|hyper|curl|isahc|attohttpc|surf|tungstenite|native-tls|rustls|openssl) '; then
+            echo "::error::a networking library is part of the build"; exit 1
+          fi
+      - name: No network DLLs imported
+        if: runner.os == 'Windows'
+        run: |
+          pip install pefile==2024.8.26
+          python - "target/release/${{ matrix.exe }}" <<'PY'
+          import pefile, sys
+          dlls = {e.dll.decode().lower() for e in pefile.PE(sys.argv[1]).DIRECTORY_ENTRY_IMPORT}
+          print("imports:", ", ".join(sorted(dlls)))
+          bad = dlls & {"ws2_32.dll", "wsock32.dll", "winhttp.dll", "wininet.dll", "urlmon.dll", "dnsapi.dll"}
+          sys.exit(f"network DLLs imported: {sorted(bad)}" if bad else 0)
+          PY
+      - name: Same decisions as the Python engine
+        if: runner.os == 'Linux'
+        run: tests/parity.sh
+
+      - run: mkdir dist && mv "target/release/${{ matrix.exe }}" "dist/${{ matrix.asset }}"
+      - name: Third-party license notices (fails on a license not listed in about.toml)
+        if: runner.os == 'Linux'
+        run: |
+          cargo install cargo-about@0.9.2 --locked --features cli
+          cargo about generate --locked about.hbs -o dist/THIRD-PARTY-NOTICES.txt
       - id: unsigned
         uses: actions/upload-artifact@v4
         with:
@@ -85,4 +100,4 @@ jobs:
       - if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.asset }}*
+          files: dist/*
