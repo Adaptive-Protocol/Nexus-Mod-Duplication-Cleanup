@@ -51,7 +51,7 @@ jobs:
           if cargo tree --locked -e normal --prefix none --format '{p}' | grep -E '^(reqwest|ureq|hyper|curl|isahc|attohttpc|surf|tungstenite|native-tls|rustls|openssl) '; then
             echo "::error::a networking library is part of the build"; exit 1
           fi
-      - name: No network DLLs imported
+      - name: No network DLLs or VC++ runtime imported
         if: runner.os == 'Windows'
         run: |
           pip install pefile==2024.8.26
@@ -60,7 +60,8 @@ jobs:
           dlls = {e.dll.decode().lower() for e in pefile.PE(sys.argv[1]).DIRECTORY_ENTRY_IMPORT}
           print("imports:", ", ".join(sorted(dlls)))
           bad = dlls & {"ws2_32.dll", "wsock32.dll", "winhttp.dll", "wininet.dll", "urlmon.dll", "dnsapi.dll"}
-          sys.exit(f"network DLLs imported: {sorted(bad)}" if bad else 0)
+          crt = {d for d in dlls if d.startswith("vcruntime")}   # needs the VC++ Redistributable
+          sys.exit(f"network DLLs imported: {sorted(bad)}" if bad else f"dynamic VC runtime imported: {sorted(crt)}" if crt else 0)
           PY
       - name: Same decisions as the Python engine
         if: runner.os == 'Linux'
