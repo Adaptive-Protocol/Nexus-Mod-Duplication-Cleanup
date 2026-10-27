@@ -10,6 +10,8 @@ Grab the latest build from the [Releases](../../releases) page:
 
 - **Windows:** `NexusModCleanup-windows.exe`
 - **Linux:** `NexusModCleanup-linux` (run `chmod +x NexusModCleanup-linux` once)
+- **Windows, as an archive:** `NexusModCleanup-v<version>-windows.7z` holds the same exe and its uninstaller (`Uninstall.exe`) with this README, the license and `THIRD-PARTY-NOTICES.txt`. This is the file uploaded to Nexus Mods.
+- **Uninstaller:** `NexusModCleanup-uninstall-windows.exe` or `NexusModCleanup-uninstall-linux`, see [Uninstalling](#uninstalling).
 
 Each is a single program with nothing to install and nothing unpacked to a temp folder. On Linux it needs a desktop session (X11 or Wayland) with OpenGL, which every mainstream desktop has.
 
@@ -18,7 +20,7 @@ Each is a single program with nothing to install and nothing unpacked to a temp 
 - It only looks at the folder you pick. It never touches game files or anything outside that folder.
 - Nothing changes until you press **Clean up** and confirm. Outdated files are moved to `_outdated_trash` unless you tick **Delete permanently**.
 - It never connects to the internet: no update checks, no telemetry, no links. Every build is checked for networking libraries, and the Windows build for networking DLL imports.
-- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder, keep count and theme) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux.
+- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder, keep count and theme) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux. The uninstaller removes it.
 
 ## Using the app
 
@@ -79,6 +81,15 @@ python nexus_dedupe.py --folder ... --keep 2                          # keep a r
 
 With `--execute`, it asks about each judgment call and then confirms once before acting. `--yes` skips all prompts and collapses everything.
 
+## Uninstalling
+
+Run the uninstaller from the app's folder (the .7z already puts `Uninstall.exe` there). On Linux, run it in a terminal (after `chmod +x NexusModCleanup-uninstall-linux`), where it asks before doing anything. It lists what it will remove and waits for you to confirm:
+
+- the app next to it, but only if the file really is this app
+- the settings file and its folder: `%APPDATA%\Nexus Mod Dedupe` on Windows, `~/.local/share/nexusmoddedupe` on Linux
+
+It never touches your mods, `_outdated_trash` folders or `dedupe_log` files, and never connects to the internet. Afterwards, delete the uninstaller and the docs that came with the app.
+
 ## Verifying downloads
 
 Every release binary is built by GitHub Actions straight from this repository, with a `.sha256` checksum and a signed build-provenance attestation alongside it:
@@ -96,7 +107,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 - Committers and reviewers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
 - Approvers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
 
-Only the Windows binary is signed. It is built by this repository's GitHub Actions workflow and each release is approved manually before signing.
+Only the Windows app, `NexusModCleanup-windows.exe`, is signed. It is built by this repository's GitHub Actions workflow and each release is approved manually before signing.
 
 **Privacy policy:** This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
 
@@ -105,12 +116,12 @@ Only the Windows binary is signed. It is built by this repository's GitHub Actio
 The app is written in Rust with [egui](https://github.com/emilk/egui). With [Rust](https://rustup.rs) installed:
 
 ```
-cargo build --release          # binary in target/release/
+cargo build --release          # binaries in target/release/
 cargo test                     # engine tests
 tests/parity.sh                # compare decisions with nexus_dedupe.py (Linux/macOS)
 ```
 
-Pushing a `v*` tag that matches the version in `Cargo.toml` builds both binaries on GitHub Actions and attaches them to a GitHub release, together with checksums and `THIRD-PARTY-NOTICES.txt` (see `.github/workflows/build.yml`).
+Pushing a `v*` tag that matches the version in `Cargo.toml` builds the app and its uninstaller for Windows and Linux on GitHub Actions and attaches them to a GitHub release, together with checksums, `THIRD-PARTY-NOTICES.txt` and the Nexus .7z (see `.github/workflows/build.yml`).
 
 ## Credits and origins
 

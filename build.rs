@@ -1,11 +1,12 @@
 // Windows: embed product name/version (required for signing) and a manifest that never asks for admin rights.
 fn main() {
     #[cfg(windows)]
-    winresource::WindowsResource::new()
-        .set("ProductName", "Nexus-Mod-Duplication-Cleanup")
-        .set("FileDescription", "Nexus Mod Duplication Cleanup")
-        .set("OriginalFilename", "NexusModCleanup.exe")
-        .set_manifest(r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+    for (bin, description) in [("NexusModCleanup", "Nexus Mod Duplication Cleanup"), ("Uninstall", "Uninstall Nexus Mod Duplication Cleanup")] {
+        winresource::WindowsResource::new()
+            .set("ProductName", "Nexus-Mod-Duplication-Cleanup")
+            .set("FileDescription", description)
+            .set("OriginalFilename", &format!("{bin}.exe"))
+            .set_manifest(r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges>
     <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
   </requestedPrivileges></security></trustInfo>
@@ -13,6 +14,7 @@ fn main() {
     <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
   </windowsSettings></application>
 </assembly>"#)
-        .compile()
-        .expect("embed Windows resources");
+            .compile_for(bin)
+            .expect("embed Windows resources");
+    }
 }
