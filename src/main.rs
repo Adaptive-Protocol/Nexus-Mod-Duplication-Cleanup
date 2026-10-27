@@ -10,6 +10,12 @@ const TITLE: &str = "Nexus Mod Dedupe";
 const REVIEW_HELP: &str = "These mods need a judgment call: their file names carry different embedded versions \
     (e.g. CET builds for different game patches), or upload order disagrees with version numbers.\n\n\
     Ticked mods are collapsed to the newest file. Untick any mod whose older files you want to keep, e.g. as a rollback option.";
+const ABOUT: &str = concat!("Nexus Mod Dedupe v", env!("CARGO_PKG_VERSION"), ", MIT license. It works offline and never connects to the internet.\n\n\
+    Design inspired by red4-conflicts by rfuzzo (github.com/rfuzzo/Cyberpunk-utility): the dark theme and theme switch, \
+    the mod rows with coloured status circles, the mod filter and the summary line. \
+    The status groups, start page, judgment-call popup and clean-up rules are this app's own.\n\n\
+    Built with egui/eframe, rfd, fancy-regex and chrono. Their licenses are in THIRD-PARTY-NOTICES.txt.\n\n\
+    The code was written by an AI assistant (Claude, made by Anthropic) at the maintainer's direction.");
 
 #[derive(Default)]
 enum Dialog { #[default] None, Review(Vec<(usize, bool)>), Confirm, Info(&'static str, String) }
@@ -281,11 +287,14 @@ impl eframe::App for App {
             let dir = if p.is_dir() { p } else { p.parent().map_or(p.clone(), Path::to_path_buf) };   // a dropped file opens its folder
             self.open(dir);
         }
-        egui::TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.horizontal(egui::widgets::global_theme_preference_buttons);
-            ui.separator();
-            ui.weak(concat!("v", env!("CARGO_PKG_VERSION")));
-        })));
+        egui::TopBottomPanel::top("menu").show(ctx, |ui| egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("About", |ui| ui.vertical(|ui| { ui.set_max_width(440.0); ui.label(ABOUT) }));   // credits and origins, as plain text: no links; vertical() stops menu justification
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.horizontal(egui::widgets::global_theme_preference_buttons);
+                ui.separator();
+                ui.weak(concat!("v", env!("CARGO_PKG_VERSION")));
+            });
+        }));
         egui::TopBottomPanel::top("bar").show(ctx, |ui| {
             ui.add_space(6.0);
             ui.horizontal(|ui| {
