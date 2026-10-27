@@ -2,6 +2,8 @@
 
 A small native app that finds outdated versions of mods in your Nexus Mods download folder and removes them, keeping only the newest file of each mod. Mods that need a judgment call, such as builds for different game patches, stay untouched until you say what to remove. Works on Windows and Linux.
 
+![Mods grouped by status, with a mod expanded to show its files](docs/screenshots/groups.png)
+
 ## Download
 
 Grab the latest build from the [Releases](../../releases) page:
@@ -35,9 +37,20 @@ If the folder has no Nexus downloads, the app keeps showing its start page and s
 
 **Keep newest per mod** keeps more than one file per mod, e.g. `2` keeps the previous version of everything as a rollback copy.
 
-The window is dark by default. The **Light / Dark / System** switch at the top right changes this, and the app remembers your choice.
+The window is dark by default. The **Light / Dark / System** switch at the top right changes this, and the app remembers your choice. **About**, at the top left, shows the version and the [credits](#credits-and-origins).
 
 A `dedupe_log_<date>.txt` file recording every decision is saved in the folder after each cleanup.
+
+## Screenshots
+
+These use a made-up sample folder.
+
+| | |
+|---|---|
+| ![Start page](docs/screenshots/start.png) | ![Judgment-call popup](docs/screenshots/review.png) |
+| The start page, before a folder is chosen | The judgment-call popup |
+| ![Light theme](docs/screenshots/light.png) | ![About menu](docs/screenshots/about.png) |
+| The light theme | The About menu, with the credits |
 
 ## How it decides
 
@@ -99,8 +112,17 @@ tests/parity.sh                # compare decisions with nexus_dedupe.py (Linux/m
 
 Pushing a `v*` tag that matches the version in `Cargo.toml` builds both binaries on GitHub Actions and attaches them to a GitHub release, together with checksums and `THIRD-PARTY-NOTICES.txt` (see `.github/workflows/build.yml`).
 
-## License and credits
+## Credits and origins
 
-MIT, see [LICENSE](LICENSE). The app is built with [egui/eframe](https://github.com/emilk/egui), [rfd](https://github.com/PolyMeilex/rfd), [fancy-regex](https://github.com/fancy-regex/fancy-regex), [chrono](https://github.com/chronotope/chrono) and their dependencies, all under permissive licenses (MIT, Apache-2.0, BSD, Zlib and similar). Each release includes `THIRD-PARTY-NOTICES.txt` with their full license texts.
+Where the app's design and code come from:
 
-The code was written by an AI assistant (Claude) at the maintainer's direction.
+- **Design:** the look is inspired by [red4-conflicts](https://github.com/rfuzzo/Cyberpunk-utility) by [rfuzzo](https://github.com/rfuzzo), a conflict checker for Cyberpunk 2077 archive mods. From it come the dark theme and its Light / Dark / System switch, the collapsible mod rows with coloured status circles after each name and counts in brackets, the mod filter and the summary line. No code was copied. The status groups, the start page, the judgment-call popup and the clean-up rules are this app's own.
+- **Engine:** the rules for grouping and ranking files were written for this project, first as `nexus_dedupe.py` and then ported line for line to Rust. The filename formats it reads are the ones Nexus Mods gives its downloads.
+- **Libraries:** [egui/eframe](https://github.com/emilk/egui) draws the window, [rfd](https://github.com/PolyMeilex/rfd) opens the native folder picker, [fancy-regex](https://github.com/fancy-regex/fancy-regex) matches file names and [chrono](https://github.com/chronotope/chrono) reads dates. They and their dependencies all use permissive licenses (MIT, Apache-2.0, BSD, Zlib and similar). Each release includes `THIRD-PARTY-NOTICES.txt` with their full license texts.
+- **AI:** the code, tests and documentation were written by an AI assistant (Claude, made by Anthropic) at the maintainer's direction. On Nexus Mods the app is tagged AI-Generated Content.
+
+The **About** menu in the app shows the same credits.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
