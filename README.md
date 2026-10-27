@@ -16,16 +16,26 @@ Each is a single program with nothing to install and nothing unpacked to a temp 
 - It only looks at the folder you pick. It never touches game files or anything outside that folder.
 - Nothing changes until you press **Clean up** and confirm. Outdated files are moved to `_outdated_trash` unless you tick **Delete permanently**.
 - It never connects to the internet: no update checks, no telemetry, no links. Every build is checked for networking libraries, and the Windows build for networking DLL imports.
-- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder and keep count) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux.
+- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder, keep count and theme) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux.
 
 ## Using the app
 
-1. Pick your mod downloads folder (the default is the folder the app is in, then the last folder you used).
-2. Press **Scan**. Nothing on disk changes. You get a report of what would be removed.
-3. If any mods need a judgment call, a popup lists them. Ticked mods are collapsed to the newest file. Untick any mod whose older files you want to keep, for example to roll back after a game patch.
+1. Pick your mod downloads folder with **Browse…**, or drop the folder onto the window (or onto the exe). The app scans it straight away and opens on your mods. Next time it opens straight on the same folder. Scanning never changes anything on disk.
+2. Your mods are sorted into groups, each marked with a coloured circle:
+   - 🔴 **Outdated**: mods with older files that **Clean up** would remove.
+   - 🟢 **Up to date**: mods with nothing to remove.
+   - ⚪ **Needs review**: judgment calls, each with a tick box (see below).
+   - ⚪ **Not recognised**: files that don't follow a Nexus naming pattern. These are never touched.
+
+   Expand a mod to see its files, newest first: green files are kept, red files are outdated and grey files are left alone. Hover over a circle to see what will happen to that file. Type in **Mod filter** to find a mod by name or ID.
+3. If any mods need a judgment call, a popup lists them. Ticked mods are collapsed to the newest file. Untick any mod whose older files you want to keep, for example to roll back after a game patch. You can change these ticks later under **Needs review**.
 4. Press **Clean up**. By default outdated files go to an `_outdated_trash` subfolder, so you can check them before deleting that folder yourself. Tick **Delete permanently** to skip the trash.
 
+If the folder has no Nexus downloads, the app keeps showing its start page and says so. **Clean up** stays disabled until there is something to remove.
+
 **Keep newest per mod** keeps more than one file per mod, e.g. `2` keeps the previous version of everything as a rollback copy.
+
+The window is dark by default. The **Light / Dark / System** switch at the top right changes this, and the app remembers your choice.
 
 A `dedupe_log_<date>.txt` file recording every decision is saved in the folder after each cleanup.
 

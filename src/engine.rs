@@ -33,6 +33,7 @@ pub struct Decision {
 
 impl Decision {
     pub fn delete(&self) -> &[File] { if self.collapse { &self.files[self.keep.min(self.files.len())..] } else { &[] } }
+    pub fn kept(&self) -> &[File] { &self.files[..self.files.len() - self.delete().len()] }
     pub fn key_str(&self) -> String { format!("{}-{}", self.files[0].name, self.files[0].mod_id) }
 }
 
@@ -41,7 +42,7 @@ fn split_ext(name: &str) -> (&str, &str) {
     match name.rfind('.') { Some(i) if i > 0 && i < name.len() - 1 => (&name[..i], &name[i..]), _ => (name, "") }
 }
 
-fn file_name(p: &Path) -> String { p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default() }
+pub fn file_name(p: &Path) -> String { p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default() }
 
 /// (name, mod_id, version parts, upload timestamp), or None.
 pub fn parse_nexus(filename: &str) -> Option<(String, String, Vec<String>, i64)> {
@@ -81,6 +82,11 @@ fn version_key(parts: &[String]) -> Vec<Vec<Chunk>> {
 pub fn fmt_ver(parts: &[String]) -> String {
     let s = parts.iter().map(|p| strip_v(p)).collect::<Vec<_>>().join(".");
     if s.starts_with(|c: char| c.is_ascii_digit()) { format!("v{s}") } else { s }
+}
+
+/// Upload date from the filename: "2026-10-17", or "undated".
+pub fn fmt_date(ts: i64) -> String {
+    if ts == 0 { "undated".into() } else { chrono::DateTime::from_timestamp(ts, 0).map_or_else(String::new, |t| t.format("%Y-%m-%d").to_string()) }
 }
 
 pub fn fmt_size(n: u64) -> String {
@@ -227,6 +233,7 @@ mod tests {
         assert_eq!(fmt_ver(&v(&["v1", "2", "6"])), "v1.2.6");
         assert_eq!(fmt_ver(&v(&["potat", "07"])), "potat.07");
         assert_eq!(fmt_size(1_048_575), "1,024.0 KB");
+        assert_eq!((fmt_date(1792232400), fmt_date(0)), ("2026-10-17".into(), "undated".into()));
     }
 
     #[test]
@@ -242,6 +249,7 @@ mod tests {
         let (mut d1, _) = scan_and_decide(&dir, 1).unwrap();
         d1.iter_mut().filter(|d| d.review).for_each(|d| d.collapse = false);
         assert_eq!(totals(&d1).0, 2);                                  // only the A series is collapsed
+        assert!(d1.iter().all(|d| d.kept().len() + d.delete().len() == d.files.len() && !d.kept().is_empty()));
         d.retain(|d| !d.delete().is_empty());
         assert_eq!(execute(&d, &dir, false), (1, 0));
         assert!(dir.join("_outdated_trash/A-1-1-0-1600000000__1600000000.zip").exists());   // name clash renamed
