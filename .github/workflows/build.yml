@@ -20,9 +20,13 @@ jobs:
           - os: windows-latest
             asset: NexusModCleanup-windows.exe
             exe: NexusModCleanup.exe
+            uninstall: NexusModCleanup-uninstall-windows.exe
+            uninstall_exe: Uninstall.exe
           - os: ubuntu-22.04
             asset: NexusModCleanup-linux
             exe: NexusModCleanup
+            uninstall: NexusModCleanup-uninstall-linux
+            uninstall_exe: Uninstall
     runs-on: ${{ matrix.os }}
     env:
       SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}   # signing is skipped until this secret exists
@@ -55,19 +59,20 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           pip install pefile==2024.8.26
-          python - "target/release/${{ matrix.exe }}" <<'PY'
+          python - "target/release/${{ matrix.exe }}" "target/release/${{ matrix.uninstall_exe }}" <<'PY'
           import pefile, sys
-          dlls = {e.dll.decode().lower() for e in pefile.PE(sys.argv[1]).DIRECTORY_ENTRY_IMPORT}
-          print("imports:", ", ".join(sorted(dlls)))
-          bad = dlls & {"ws2_32.dll", "wsock32.dll", "winhttp.dll", "wininet.dll", "urlmon.dll", "dnsapi.dll"}
-          crt = {d for d in dlls if d.startswith("vcruntime")}   # needs the VC++ Redistributable
-          sys.exit(f"network DLLs imported: {sorted(bad)}" if bad else f"dynamic VC runtime imported: {sorted(crt)}" if crt else 0)
+          for f in sys.argv[1:]:
+              dlls = {e.dll.decode().lower() for e in pefile.PE(f).DIRECTORY_ENTRY_IMPORT}
+              print(f, "imports:", ", ".join(sorted(dlls)))
+              bad = dlls & {"ws2_32.dll", "wsock32.dll", "winhttp.dll", "wininet.dll", "urlmon.dll", "dnsapi.dll"}
+              crt = {d for d in dlls if d.startswith("vcruntime")}   # needs the VC++ Redistributable
+              if bad or crt: sys.exit(f"{f}: network DLLs imported: {sorted(bad)}" if bad else f"{f}: dynamic VC runtime imported: {sorted(crt)}")
           PY
       - name: Same decisions as the Python engine
         if: runner.os == 'Linux'
         run: tests/parity.sh
 
-      - run: mkdir dist && mv "target/release/${{ matrix.exe }}" "dist/${{ matrix.asset }}"
+      - run: mkdir dist && mv "target/release/${{ matrix.exe }}" "dist/${{ matrix.asset }}" && mv "target/release/${{ matrix.uninstall_exe }}" "dist/${{ matrix.uninstall }}"
       - name: Third-party license notices (fails on a license not listed in about.toml)
         if: runner.os == 'Linux'
         run: |
@@ -93,11 +98,13 @@ jobs:
         run: mv "signed/${{ matrix.asset }}" "dist/${{ matrix.asset }}"
 
       - if: startsWith(github.ref, 'refs/tags/')
-        run: cd dist && sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+        run: cd dist && for f in "${{ matrix.asset }}" "${{ matrix.uninstall }}"; do sha256sum "$f" > "$f.sha256"; done
       - if: startsWith(github.ref, 'refs/tags/')
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/${{ matrix.asset }}
+          subject-path: |
+            dist/${{ matrix.asset }}
+            dist/${{ matrix.uninstall }}
       - if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -112,8 +119,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p NexusModCleanup-windows.exe -p THIRD-PARTY-NOTICES.txt -D pkg
-          mv pkg/NexusModCleanup-windows.exe pkg/NexusModCleanup.exe
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p NexusModCleanup-windows.exe -p NexusModCleanup-uninstall-windows.exe -p THIRD-PARTY-NOTICES.txt -D pkg
+          mv pkg/NexusModCleanup-windows.exe pkg/NexusModCleanup.exe && mv pkg/NexusModCleanup-uninstall-windows.exe pkg/Uninstall.exe
           cp README.md pkg/ && cp LICENSE pkg/LICENSE.txt
           a="NexusModCleanup-$GITHUB_REF_NAME-windows.7z"
           (cd pkg && 7z a -t7z -mx=9 "../$a" .) && 7z t "$a"

@@ -6,7 +6,7 @@ use eframe::egui::{self, Align, Color32, Layout, RichText, ThemePreference};
 use engine::{self as nd, Decision};
 use std::{collections::HashMap, fs, io, mem, path::{Path, PathBuf}, thread::{self, JoinHandle}, time::Duration};
 
-const TITLE: &str = "Nexus Mod Dedupe";
+const TITLE: &str = "Nexus Mod Dedupe";   // also names the settings folder, which the uninstaller removes (APP_ID there)
 const REVIEW_HELP: &str = "These mods need a judgment call: their file names carry different embedded versions \
     (e.g. CET builds for different game patches), or upload order disagrees with version numbers.\n\n\
     Ticked mods are collapsed to the newest file. Untick any mod whose older files you want to keep, e.g. as a rollback option.";
