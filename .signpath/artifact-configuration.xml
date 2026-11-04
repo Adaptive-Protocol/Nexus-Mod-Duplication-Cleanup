@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copy of the artifact configuration set in SignPath (it lives there, not here). The workflow passes "version" from Cargo.toml. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="NexusModCleanup-windows.exe" product-name="Nexus-Mod-Duplication-Cleanup" product-version="${version}">
+      <authenticode-sign/>
+    </pe-file>
+    <pe-file path="NexusModCleanup-uninstall-windows.exe" product-name="Nexus-Mod-Duplication-Cleanup" product-version="${version}">
+      <authenticode-sign/>
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

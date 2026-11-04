@@ -6,7 +6,7 @@ A small native app that finds outdated versions of mods in your Nexus Mods downl
 
 ## Download
 
-Grab the latest build from the [Releases](../../releases) page:
+Grab the latest build from the [Releases](../../releases) page. Windows builds are signed; see the [Code signing policy](#code-signing-policy).
 
 - **Windows:** `NexusModCleanup-windows.exe`
 - **Linux:** `NexusModCleanup-linux` (run `chmod +x NexusModCleanup-linux` once)
@@ -107,7 +107,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 - Committers and reviewers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
 - Approvers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
 
-Only the Windows app, `NexusModCleanup-windows.exe`, is signed. It is built by this repository's GitHub Actions workflow and each release is approved manually before signing.
+The Windows app and its uninstaller (`NexusModCleanup-windows.exe` and `NexusModCleanup-uninstall-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe` and `Uninstall.exe`) are signed. They are built by this repository's GitHub Actions workflow, and each release is approved manually before signing. The SignPath artifact configuration is mirrored in [`.signpath/artifact-configuration.xml`](.signpath/artifact-configuration.xml).
 
 **Privacy policy:** This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
 
