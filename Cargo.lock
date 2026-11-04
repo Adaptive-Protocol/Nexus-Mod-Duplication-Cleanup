@@ -1928,7 +1928,7 @@ dependencies = [
 
 [[package]]
 name = "nexus-mod-cleanup"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "chrono",
  "eframe",

@@ -29,8 +29,8 @@ jobs:
             uninstall_exe: Uninstall
     runs-on: ${{ matrix.os }}
     env:
-      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}   # signing is skipped until this secret exists
-      SIGN: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') }}
+      # Windows release builds are signed once the SIGNPATH_ORGANIZATION_ID variable exists; from then on a missing token fails the build
+      SIGN: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     defaults:
       run:
         shell: bash
@@ -40,12 +40,14 @@ jobs:
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
+        if: "!startsWith(github.ref, 'refs/tags/')"   # releases build from scratch, never from a cache
 
       - name: Tag must match the version in Cargo.toml
+        id: version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          [[ "$GITHUB_REF_NAME" == "v$v" ]] || { echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $v"; exit 1; }
+          [[ "$GITHUB_REF_NAME" == "v$v" ]] || { echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $v"; exit 1; } && echo "v=$v" >> "$GITHUB_OUTPUT"
 
       - run: cargo test --release --locked
       - run: cargo build --release --locked
@@ -87,9 +89,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: dist/${{ matrix.asset }}
+          path: |
+            dist/${{ matrix.asset }}
+            dist/${{ matrix.uninstall }}
 
-      - if: env.SIGN == 'true' && env.SIGNPATH_API_TOKEN != ''
+      - name: Signing is configured
+        if: env.SIGN == 'true'
+        env:
+          TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: '[[ -n "$TOKEN" ]] || { echo "::error::SIGNPATH_ORGANIZATION_ID is set but the SIGNPATH_API_TOKEN secret is missing"; exit 1; }'
+      - if: env.SIGN == 'true'
         uses: signpath/github-action-submit-signing-request@v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -97,10 +106,20 @@ jobs:
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'Nexus-Mod-Duplication-Cleanup' }}
           signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
           github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          parameters: |
+            version: ${{ toJSON(steps.version.outputs.v) }}   # checked against the exes' product version
           wait-for-completion-timeout-in-seconds: 3600   # time for the manual approval
           output-artifact-directory: signed
-      - if: env.SIGN == 'true' && env.SIGNPATH_API_TOKEN != ''
-        run: mv "signed/${{ matrix.asset }}" "dist/${{ matrix.asset }}"
+      - name: Both exes carry a valid signature
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          foreach ($f in "${{ matrix.asset }}", "${{ matrix.uninstall }}") {
+            Move-Item -Force "signed/$f" "dist/$f"
+            $s = Get-AuthenticodeSignature "dist/$f"
+            "$f : $($s.Status) : $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid') { throw "$f is not validly signed" }
+          }
 
       - if: startsWith(github.ref, 'refs/tags/')
         run: cd dist && for f in "${{ matrix.asset }}" "${{ matrix.uninstall }}"; do sha256sum "$f" > "$f.sha256"; done
