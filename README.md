@@ -102,12 +102,11 @@ gh attestation verify NexusModCleanup-windows.exe -R Adaptive-Protocol/Nexus-Mod
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+The Windows app and its uninstaller (`NexusModCleanup-windows.exe` and `NexusModCleanup-uninstall-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe` and `Uninstall.exe`) are signed with [Microsoft Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/). The publisher Windows shows is the developer's registered business, whose identity Microsoft validated. To check a file, open its Properties and then the Digital Signatures tab.
 
-- Committers and reviewers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
-- Approvers: [Adaptive-Protocol](https://github.com/Adaptive-Protocol)
-
-The Windows app and its uninstaller (`NexusModCleanup-windows.exe` and `NexusModCleanup-uninstall-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe` and `Uninstall.exe`) are signed. They are built by this repository's GitHub Actions workflow, and each release is approved manually before signing. The SignPath artifact configuration is mirrored in [`.signpath/artifact-configuration.xml`](.signpath/artifact-configuration.xml).
+- Signed files are built only by this repository's GitHub Actions workflow, from the tagged source. Nothing is signed on a personal computer.
+- Each release runs in a protected `release` environment and is approved by the maintainer, [Adaptive-Protocol](https://github.com/Adaptive-Protocol), before signing.
+- The workflow refuses to release unsigned Windows files once signing is switched on, and checks every signature before publishing.
 
 **Privacy policy:** This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
 
