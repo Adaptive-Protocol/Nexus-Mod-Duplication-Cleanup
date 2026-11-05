@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copy of the artifact configuration set in SignPath (it lives there, not here). The workflow passes "version" from Cargo.toml. -->
+<!-- Fallback signer only (Azure Artifact Signing is the main one). Copy of the artifact configuration set in SignPath (it lives there, not here). The workflow passes "version" from Cargo.toml. -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <parameters>
     <parameter name="version" required="true" />

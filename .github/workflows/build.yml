@@ -10,7 +10,7 @@ permissions:
   contents: write
   id-token: write      # build provenance attestations
   attestations: write
-  actions: read        # lets SignPath fetch the unsigned artifact
+  actions: read        # lets SignPath (the fallback signer) fetch the unsigned artifact
 
 jobs:
   build:
@@ -28,9 +28,12 @@ jobs:
             uninstall: NexusModCleanup-uninstall-linux
             uninstall_exe: Uninstall
     runs-on: ${{ matrix.os }}
+    # Windows releases run in the "release" environment: Azure trusts only this environment, and it can require an approval
+    environment: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') && 'release' || '' }}
     env:
-      # Windows release builds are signed once the SIGNPATH_ORGANIZATION_ID variable exists; from then on a missing token fails the build
-      SIGN: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') && vars.SIGNPATH_ORGANIZATION_ID != '' }}
+      # Windows releases are signed by Azure Artifact Signing once AZURE_SIGNING_ACCOUNT is set (else SignPath once SIGNPATH_ORGANIZATION_ID is set);
+      # from then on missing settings fail the release instead of shipping it unsigned
+      SIGN: ${{ matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/') && (vars.AZURE_SIGNING_ACCOUNT != '' && 'azure' || vars.SIGNPATH_ORGANIZATION_ID != '' && 'signpath') || '' }}
     defaults:
       run:
         shell: bash
@@ -94,11 +97,43 @@ jobs:
             dist/${{ matrix.uninstall }}
 
       - name: Signing is configured
-        if: env.SIGN == 'true'
+        if: env.SIGN != ''
         env:
-          TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
-        run: '[[ -n "$TOKEN" ]] || { echo "::error::SIGNPATH_ORGANIZATION_ID is set but the SIGNPATH_API_TOKEN secret is missing"; exit 1; }'
-      - if: env.SIGN == 'true'
+          READY: ${{ (env.SIGN == 'azure' && vars.AZURE_CLIENT_ID && vars.AZURE_TENANT_ID && vars.AZURE_SUBSCRIPTION_ID && vars.AZURE_SIGNING_ENDPOINT && vars.AZURE_CERT_PROFILE && 'yes') || (env.SIGN == 'signpath' && secrets.SIGNPATH_API_TOKEN && 'yes') || '' }}
+        run: '[[ "$READY" == yes ]] || { echo "::error::$SIGN signing is switched on but one of its repo variables or secrets is missing"; exit 1; }'
+
+      - if: env.SIGN == 'azure'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - if: env.SIGN == 'azure'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE }}
+          files: |
+            ${{ github.workspace }}\dist\${{ matrix.asset }}
+            ${{ github.workspace }}\dist\${{ matrix.uninstall }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: Nexus Mod Duplication Cleanup
+          description-url: https://github.com/Adaptive-Protocol/Nexus-Mod-Duplication-Cleanup
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+
+      - if: env.SIGN == 'signpath'
         uses: signpath/github-action-submit-signing-request@v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -110,12 +145,13 @@ jobs:
             version: ${{ toJSON(steps.version.outputs.v) }}   # checked against the exes' product version
           wait-for-completion-timeout-in-seconds: 3600   # time for the manual approval
           output-artifact-directory: signed
+      - if: env.SIGN == 'signpath'
+        run: for f in "${{ matrix.asset }}" "${{ matrix.uninstall }}"; do mv "signed/$f" "dist/$f"; done
       - name: Both exes carry a valid signature
-        if: env.SIGN == 'true'
+        if: env.SIGN != ''
         shell: pwsh
         run: |
           foreach ($f in "${{ matrix.asset }}", "${{ matrix.uninstall }}") {
-            Move-Item -Force "signed/$f" "dist/$f"
             $s = Get-AuthenticodeSignature "dist/$f"
             "$f : $($s.Status) : $($s.SignerCertificate.Subject)"
             if ($s.Status -ne 'Valid') { throw "$f is not validly signed" }
