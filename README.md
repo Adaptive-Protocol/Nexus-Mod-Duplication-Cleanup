@@ -6,7 +6,7 @@ A small native app that finds outdated versions of mods in your Nexus Mods downl
 
 ## Download
 
-Grab the latest build from the [Releases](../../releases) page. Windows builds are signed; see the [Code signing policy](#code-signing-policy).
+Grab the latest build from the [Releases](../../releases) page. See the [Code signing policy](#code-signing-policy) for Windows signing.
 
 - **Windows:** `NexusModCleanup-windows.exe`
 - **Linux:** `NexusModCleanup-linux` (run `chmod +x NexusModCleanup-linux` once)
@@ -96,7 +96,7 @@ gh attestation verify NexusModCleanup-windows.exe -R Adaptive-Protocol/Nexus-Mod
 
 ## Code signing policy
 
-The Windows app (`NexusModCleanup-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe`) is signed with [Microsoft Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/). The publisher Windows shows is the developer's registered business, whose identity Microsoft validated. To check a file, open its Properties and then the Digital Signatures tab.
+Signing is being set up, so releases made before it's ready are unsigned and Windows may warn about them. From then on, the Windows app (`NexusModCleanup-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe`) is signed with [Microsoft Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/). The publisher Windows shows is the developer's registered business, whose identity Microsoft validated. To check a file, open its Properties and then the Digital Signatures tab.
 
 - Signed files are built only by this repository's GitHub Actions workflow, from the tagged source. Nothing is signed on a personal computer.
 - Each release runs in a protected `release` environment and is approved by the maintainer, [Adaptive-Protocol](https://github.com/Adaptive-Protocol), before signing.
