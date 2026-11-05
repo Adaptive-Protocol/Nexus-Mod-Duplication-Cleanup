@@ -10,8 +10,7 @@ Grab the latest build from the [Releases](../../releases) page. Windows builds a
 
 - **Windows:** `NexusModCleanup-windows.exe`
 - **Linux:** `NexusModCleanup-linux` (run `chmod +x NexusModCleanup-linux` once)
-- **Windows, as an archive:** `NexusModCleanup-v<version>-windows.7z` holds the same exe and its uninstaller (`Uninstall.exe`) with this README, the license and `THIRD-PARTY-NOTICES.txt`. This is the file uploaded to Nexus Mods.
-- **Uninstaller:** `NexusModCleanup-uninstall-windows.exe` or `NexusModCleanup-uninstall-linux`, see [Uninstalling](#uninstalling).
+- **Windows, as an archive:** `NexusModCleanup-windows.7z` holds the same exe with this README, the license and `THIRD-PARTY-NOTICES.txt`. This is the file uploaded to Nexus Mods.
 
 Each is a single program with nothing to install and nothing unpacked to a temp folder. On Linux it needs a desktop session (X11 or Wayland) with OpenGL, which every mainstream desktop has.
 
@@ -20,7 +19,7 @@ Each is a single program with nothing to install and nothing unpacked to a temp 
 - It only looks at the folder you pick. It never touches game files or anything outside that folder.
 - Nothing changes until you press **Clean up** and confirm. Outdated files are moved to `_outdated_trash` unless you tick **Delete permanently**.
 - It never connects to the internet: no update checks, no telemetry, no links. Every build is checked for networking libraries, and the Windows build for networking DLL imports.
-- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder, keep count and theme) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux. The uninstaller removes it.
+- It writes two things besides moving files: a `dedupe_log_<date>.txt` in the mods folder after each clean-up, and a small settings file (last folder, keep count and theme) in your user profile, under `%APPDATA%` on Windows or `~/.local/share` on Linux. See [Removing it](#removing-it).
 
 ## Using the app
 
@@ -81,14 +80,9 @@ python nexus_dedupe.py --folder ... --keep 2                          # keep a r
 
 With `--execute`, it asks about each judgment call and then confirms once before acting. `--yes` skips all prompts and collapses everything.
 
-## Uninstalling
+## Removing it
 
-Run the uninstaller from the app's folder (the .7z already puts `Uninstall.exe` there). On Linux, run it in a terminal (after `chmod +x NexusModCleanup-uninstall-linux`), where it asks before doing anything. It lists what it will remove and waits for you to confirm:
-
-- the app next to it, but only if the file really is this app
-- the settings file and its folder: `%APPDATA%\Nexus Mod Dedupe` on Windows, `~/.local/share/nexusmoddedupe` on Linux
-
-It never touches your mods, `_outdated_trash` folders or `dedupe_log` files, and never connects to the internet. Afterwards, delete the uninstaller and the docs that came with the app.
+Delete `NexusModCleanup.exe` and the docs that came with it. To remove its settings too, delete `%APPDATA%\Nexus Mod Dedupe` on Windows or `~/.local/share/nexusmoddedupe` on Linux. Your mods, `_outdated_trash` folders and `dedupe_log` files stay where they are: restore or delete them yourself.
 
 ## Verifying downloads
 
@@ -102,11 +96,11 @@ gh attestation verify NexusModCleanup-windows.exe -R Adaptive-Protocol/Nexus-Mod
 
 ## Code signing policy
 
-The Windows app and its uninstaller (`NexusModCleanup-windows.exe` and `NexusModCleanup-uninstall-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe` and `Uninstall.exe`) are signed with [Microsoft Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/). The publisher Windows shows is the developer's registered business, whose identity Microsoft validated. To check a file, open its Properties and then the Digital Signatures tab.
+The Windows app (`NexusModCleanup-windows.exe`, shipped in the Nexus .7z as `NexusModCleanup.exe`) is signed with [Microsoft Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/). The publisher Windows shows is the developer's registered business, whose identity Microsoft validated. To check a file, open its Properties and then the Digital Signatures tab.
 
 - Signed files are built only by this repository's GitHub Actions workflow, from the tagged source. Nothing is signed on a personal computer.
 - Each release runs in a protected `release` environment and is approved by the maintainer, [Adaptive-Protocol](https://github.com/Adaptive-Protocol), before signing.
-- The workflow refuses to release unsigned Windows files once signing is switched on, and checks every signature before publishing.
+- The workflow refuses to release an unsigned Windows file once signing is switched on, and checks the signature before publishing.
 
 **Privacy policy:** This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
 
@@ -115,12 +109,12 @@ The Windows app and its uninstaller (`NexusModCleanup-windows.exe` and `NexusMod
 The app is written in Rust with [egui](https://github.com/emilk/egui). With [Rust](https://rustup.rs) installed:
 
 ```
-cargo build --release          # binaries in target/release/
+cargo build --release          # binary in target/release/
 cargo test                     # engine tests
 tests/parity.sh                # compare decisions with nexus_dedupe.py (Linux/macOS)
 ```
 
-Pushing a `v*` tag that matches the version in `Cargo.toml` builds the app and its uninstaller for Windows and Linux on GitHub Actions and attaches them to a GitHub release, together with checksums, `THIRD-PARTY-NOTICES.txt` and the Nexus .7z (see `.github/workflows/build.yml`).
+Pushing a `v*` tag that matches the version in `Cargo.toml` builds the app for Windows and Linux on GitHub Actions and attaches it to a GitHub release, together with checksums, `THIRD-PARTY-NOTICES.txt` and the Nexus .7z (see `.github/workflows/build.yml`).
 
 ## Credits and origins
 
