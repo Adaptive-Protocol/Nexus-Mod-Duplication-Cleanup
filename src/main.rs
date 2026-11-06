@@ -10,7 +10,7 @@ const TITLE: &str = "Nexus Mod Dedupe";   // also names the settings folder (see
 const REVIEW_HELP: &str = "These mods need a judgment call: their file names carry different embedded versions \
     (e.g. CET builds for different game patches), or upload order disagrees with version numbers.\n\n\
     Ticked mods are collapsed to the newest file. Untick any mod whose older files you want to keep, e.g. as a rollback option.";
-const ABOUT: &str = concat!("Nexus Mod Dedupe v", env!("CARGO_PKG_VERSION"), ", MIT license. It works offline and never connects to the internet.\n\n\
+const ABOUT: &str = concat!("Nexus Mod Dedupe v", env!("CARGO_PKG_VERSION"), " by FauxNoodles on Nexus Mods, MIT license. It works offline and never connects to the internet.\n\n\
     Design inspired by red4-conflicts by rfuzzo (github.com/rfuzzo/Cyberpunk-utility): the dark theme and theme switch, \
     the mod rows with coloured status circles, the mod filter and the summary line. \
     The status groups, start page, judgment-call popup and clean-up rules are this app's own.\n\n\

@@ -2,6 +2,8 @@
 
 A small native app that finds outdated versions of mods in your Nexus Mods download folder and removes them, keeping only the newest file of each mod. Mods that need a judgment call, such as builds for different game patches, stay untouched until you say what to remove. Works on Windows and Linux.
 
+Published on Nexus Mods by [FauxNoodles](https://next.nexusmods.com/profile/FauxNoodles), who maintains this repository.
+
 ![Mods grouped by status, with a mod expanded to show its files](docs/screenshots/groups.png)
 
 ## Download
