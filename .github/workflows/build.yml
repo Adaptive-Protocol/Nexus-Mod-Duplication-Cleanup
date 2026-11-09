@@ -176,3 +176,40 @@ jobs:
           (cd pkg && 7z a -t7z -mx=9 "../$a" .) && 7z t "$a"
           sha256sum "$a" > "$a.sha256"
           gh release upload "$GITHUB_REF_NAME" "$a" "$a.sha256" -R "$GITHUB_REPOSITORY" --clobber
+
+  nexus-upload:        # adds the .7z to the Nexus page as the next version of its main file; off until NEXUS_FILE_ID is set
+    needs: nexus-archive
+    if: startsWith(github.ref, 'refs/tags/') && vars.NEXUS_FILE_ID != ''
+    runs-on: ubuntu-22.04
+    environment: nexus   # holds the NEXUS_API_KEY secret; only v* tags may use it
+    defaults:
+      run:
+        shell: bash      # pipefail: a failed Nexus lookup stops the job
+    env:
+      GH_TOKEN: ${{ github.token }}
+      A: NexusModCleanup-windows.7z
+    steps:
+      - id: prep
+        env:
+          KEY: ${{ secrets.NEXUS_API_KEY }}
+        run: |
+          v="${GITHUB_REF_NAME#v}"   # Nexus versions allow letters, digits, dots and dashes only
+          # a re-run must not add this version (or its changelog) a second time
+          n=$(curl -fsS -H "apikey: $KEY" "https://api.nexusmods.com/v3/mod-files/${{ vars.NEXUS_FILE_ID }}/versions" | jq --arg v "$v" '[.data.versions[] | select(.version == $v)] | length')
+          echo "v=$v" >> "$GITHUB_OUTPUT"; echo "new=$([[ $n == 0 ]] && echo 1)" >> "$GITHUB_OUTPUT"
+          [[ $n == 0 ]] || echo "::notice::$v is already on Nexus, so nothing is uploaded"
+          # the Nexus changelog is the release text's hidden <!-- nexus: ... --> comment, if any
+          { echo "log<<EOF"; gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --json body -q .body | perl -0ne 'print $1 if /<!--\s*nexus:\s*(.*?)\s*-->/s'; echo; echo EOF; } >> "$GITHUB_OUTPUT"
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p "$A"
+      - if: steps.prep.outputs.new
+        uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2   # v1.0.0-beta.11
+        with:
+          api_key: ${{ secrets.NEXUS_API_KEY }}
+          file_id: ${{ vars.NEXUS_FILE_ID }}
+          mod_id: ${{ vars.NEXUS_MOD_ID }}
+          filename: ${{ env.A }}
+          display_name: ${{ vars.NEXUS_FILE_NAME || 'Nexus Mod Duplication Cleanup' }}
+          description: ${{ vars.NEXUS_FILE_DESCRIPTION }}
+          version: ${{ steps.prep.outputs.v }}
+          changelog: ${{ steps.prep.outputs.log }}
+          update_mod_version: true   # archive_existing_version stays off, so the previous version is not hidden
