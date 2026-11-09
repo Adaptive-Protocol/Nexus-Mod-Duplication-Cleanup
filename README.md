@@ -116,7 +116,7 @@ cargo test                     # engine tests
 tests/parity.sh                # compare decisions with nexus_dedupe.py (Linux/macOS)
 ```
 
-Pushing a `v*` tag that matches the version in `Cargo.toml` builds the app for Windows and Linux on GitHub Actions and attaches it to a GitHub release, together with checksums, `THIRD-PARTY-NOTICES.txt` and the Nexus .7z (see `.github/workflows/build.yml`).
+Pushing a `v*` tag that matches the version in `Cargo.toml` builds the app for Windows and Linux on GitHub Actions and attaches it to a GitHub release, together with checksums, `THIRD-PARTY-NOTICES.txt` and the Nexus .7z (see `.github/workflows/build.yml`). Once the repo variable `NEXUS_FILE_ID` is set, it also adds the .7z to the Nexus page as the next version of the main file, with Nexus Mods' own [upload action](https://github.com/Nexus-Mods/upload-action), and posts the release text's hidden `<!-- nexus: ... -->` comment as the changelog. That upload runs on GitHub's servers; the app itself never goes online.
 
 ## Credits and origins
 
